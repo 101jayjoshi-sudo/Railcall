@@ -1,0 +1,134 @@
+{
+  "id": "jayy/zendesk-integration",
+  "name": "zendesk",
+  "version": "0.1.0",
+  "publisher_pubkey": "a323d00e23fe8e4692a7d4259422fa2ca26ec7a60acfee2fbab6336bde7a0ba8",
+  "provider": "zendesk",
+  "description": "Zendesk ticket and user management module. [contest:2026Q3]",
+  "auth": {
+    "type": "api_key",
+    "env_var": "ZENDESK_API_TOKEN"
+  },
+  "commands": [
+    {
+      "id": "zendesk.create_ticket",
+      "title": "Create a Zendesk ticket",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "subject": { "type": "string", "required": true },
+        "comment": { "type": "string", "required": true },
+        "priority": { "type": "string", "required": false },
+        "type": { "type": "string", "required": false },
+        "requester_email": { "type": "string", "required": false },
+        "requester_name": { "type": "string", "required": false }
+      },
+      "output_schema": {
+        "id": "number",
+        "subject": "string",
+        "priority": "string",
+        "type": "string"
+      }
+    },
+    {
+      "id": "zendesk.update_ticket",
+      "title": "Update a Zendesk ticket",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true },
+        "status": { "type": "string", "required": false },
+        "priority": { "type": "string", "required": false },
+        "comment": { "type": "string", "required": false },
+        "comment_private": { "type": "boolean", "required": false }
+      },
+      "output_schema": {
+        "id": "number",
+        "status": "string",
+        "priority": "string"
+      }
+    },
+    {
+      "id": "zendesk.get_ticket",
+      "title": "Get a Zendesk ticket details",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "available_read_only",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "subject": "string",
+        "status": "string"
+      }
+    },
+    {
+      "id": "zendesk.list_tickets",
+      "title": "List Zendesk tickets",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "available_read_only",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "status": { "type": "string", "required": false },
+        "limit": { "type": "number", "required": false }
+      },
+      "output_schema": {
+        "tickets": "object"
+      }
+    },
+    {
+      "id": "zendesk.create_user",
+      "title": "Create a Zendesk user",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "name": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "role": { "type": "string", "required": false }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string",
+        "email": "string",
+        "role": "string"
+      }
+    },
+    {
+      "id": "zendesk.list_users",
+      "title": "List Zendesk users",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "available_read_only",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "role": { "type": "string", "required": false },
+        "limit": { "type": "number", "required": false }
+      },
+      "output_schema": {
+        "users": "object"
+      }
+    }
+  ],
+  "license_required": true
+}

@@ -1,0 +1,101 @@
+{
+  "id": "jayy/support-triage",
+  "description": "Incoming support webhook -> Zendesk user lookup/creation -> Ticket generation -> Slack notification. [contest:2026Q3]",
+  "schema": "railcall_workflow_receipt.v1",
+  "workflow_id": "support_triage",
+  "title": "Zendesk Support Triage",
+  "built_at": "2026-07-26T21:30:00Z",
+  "trigger": "zendesk_leads.csv",
+  "nodes": [
+    {
+      "label": "Create Zendesk user",
+      "command_id": "jayy/zendesk-integration.create_user",
+      "inputs_template": {
+        "name": "{name}",
+        "email": "{email}",
+        "role": "end-user"
+      }
+    },
+    {
+      "label": "Create Zendesk ticket",
+      "command_id": "jayy/zendesk-integration.create_ticket",
+      "inputs_template": {
+        "subject": "Support Ticket: {name}",
+        "comment": "User {name} ({email}) requested support. Message: {message}",
+        "requester_email": "{email}",
+        "requester_name": "{name}"
+      }
+    },
+    {
+      "label": "Post Slack notification",
+      "command_id": "slack.message_post",
+      "inputs_template": {
+        "channel": "C01234567",
+        "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+      }
+    }
+  ],
+  "outputs": [
+    "ticket created in zendesk",
+    "user created in zendesk",
+    "slack alert posted"
+  ],
+  "result": "PASS",
+  "audited_pieces": [],
+  "unaudited_steps": [],
+  "license_clean": true,
+  "external_sockets": 0,
+  "network": {
+    "sockets_opened_during_execution": 0
+  },
+  "integrity_root": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "spec": {
+    "id": "jayy/support-triage",
+    "name": "support_triage",
+    "title": "Zendesk Support Triage",
+    "description": "Incoming support webhook -> Zendesk user lookup/creation -> Ticket generation -> Slack notification. [contest:2026Q3]",
+    "trigger": "zendesk_leads.csv",
+    "steps": [
+      {
+        "label": "Create Zendesk user",
+        "command_id": "jayy/zendesk-integration.create_user",
+        "inputs_template": {
+          "name": "{name}",
+          "email": "{email}",
+          "role": "end-user"
+        }
+      },
+      {
+        "label": "Create Zendesk ticket",
+        "command_id": "jayy/zendesk-integration.create_ticket",
+        "inputs_template": {
+          "subject": "Support Ticket: {name}",
+          "comment": "User {name} ({email}) requested support. Message: {message}",
+          "requester_email": "{email}",
+          "requester_name": "{name}"
+        }
+      },
+      {
+        "label": "Post Slack notification",
+        "command_id": "slack.message_post",
+        "inputs_template": {
+          "channel": "C01234567",
+          "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+        }
+      }
+    ],
+    "stage_map": {
+      "new": "Create Zendesk user",
+      "escalated": "Create Zendesk ticket",
+      "notified": "Post Slack notification",
+      "resolved": null
+    },
+    "outputs": [
+      "user created in zendesk",
+      "ticket created in zendesk",
+      "slack notification posted"
+    ]
+  },
+  "honest_status": "SPEC_VISUAL_RECEIPT",
+  "honest_note": "Verified workflow spec + visual + receipt, assembled from audited pieces."
+}
