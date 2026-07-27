@@ -1,0 +1,130 @@
+{
+  "id": "jayy/intelligent-support-pipeline",
+  "name": "intelligent_support_pipeline",
+  "title": "Zendesk Intelligent Support Pipeline",
+  "description": "An advanced, 7-step Support-Ops pipeline that demonstrates the full orchestration power of the Zendesk integration. It provisions the user, creates a governed ticket, auto-detects and links their corporate organization based on email domain, deduplicates any existing open tickets, applies a welcome macro, compiles a daily support metrics digest, and alerts the Ops team via Slack. [contest:2026Q3]",
+  "trigger": "webhook",
+  "steps": [
+    {
+      "label": "Provision User",
+      "command_id": "jayy/zendesk-integration.create_user",
+      "inputs_template": {
+        "name": "{name}",
+        "email": "{email}"
+      }
+    },
+    {
+      "label": "Open Ticket",
+      "command_id": "jayy/zendesk-integration.create_ticket",
+      "inputs_template": {
+        "subject": "Inbound Request: {subject}",
+        "comment": "{message}",
+        "requester_email": "{email}",
+        "requester_name": "{name}"
+      }
+    },
+    {
+      "label": "Auto-Assign Organization",
+      "command_id": "jayy/zendesk-integration.auto_assign_organization",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}"
+      }
+    },
+    {
+      "label": "Merge Duplicates",
+      "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}"
+      }
+    },
+    {
+      "label": "Apply Welcome Macro",
+      "command_id": "jayy/zendesk-integration.apply_macro_to_ticket",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}",
+        "macro_id": "{macro_id}"
+      }
+    },
+    {
+      "label": "Generate Digest",
+      "command_id": "jayy/zendesk-integration.generate_support_digest",
+      "inputs_template": {}
+    },
+    {
+      "label": "Notify Slack",
+      "command_id": "slack.send_message",
+      "inputs_template": {
+        "channel": "{slack_channel}",
+        "text": "🚨 *Intelligent Triage Complete*\nTicket #{Open Ticket.id} opened for {name} ({email}).\nOrganization linked: {Auto-Assign Organization.organization_name}\nDuplicates merged: {Merge Duplicates.merged_count}\n\n*Support Digest (Last 24h)*\n{Generate Digest.summary}"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "label": "Provision User",
+      "command_id": "jayy/zendesk-integration.create_user",
+      "inputs_template": {
+        "name": "{name}",
+        "email": "{email}"
+      }
+    },
+    {
+      "label": "Open Ticket",
+      "command_id": "jayy/zendesk-integration.create_ticket",
+      "inputs_template": {
+        "subject": "Inbound Request: {subject}",
+        "comment": "{message}",
+        "requester_email": "{email}",
+        "requester_name": "{name}"
+      }
+    },
+    {
+      "label": "Auto-Assign Organization",
+      "command_id": "jayy/zendesk-integration.auto_assign_organization",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}"
+      }
+    },
+    {
+      "label": "Merge Duplicates",
+      "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}"
+      }
+    },
+    {
+      "label": "Apply Welcome Macro",
+      "command_id": "jayy/zendesk-integration.apply_macro_to_ticket",
+      "inputs_template": {
+        "ticket_id": "{Open Ticket.id}",
+        "macro_id": "{macro_id}"
+      }
+    },
+    {
+      "label": "Generate Digest",
+      "command_id": "jayy/zendesk-integration.generate_support_digest",
+      "inputs_template": {}
+    },
+    {
+      "label": "Notify Slack",
+      "command_id": "slack.send_message",
+      "inputs_template": {
+        "channel": "{slack_channel}",
+        "text": "🚨 *Intelligent Triage Complete*\nTicket #{Open Ticket.id} opened for {name} ({email}).\nOrganization linked: {Auto-Assign Organization.organization_name}\nDuplicates merged: {Merge Duplicates.merged_count}\n\n*Support Digest (Last 24h)*\n{Generate Digest.summary}"
+      }
+    }
+  ],
+  "stage_map": {
+    "step1": "Provision User",
+    "step2": "Open Ticket",
+    "step3": "Auto-Assign Organization",
+    "step4": "Merge Duplicates",
+    "step5": "Apply Welcome Macro",
+    "step6": "Generate Digest",
+    "step7": "Notify Slack",
+    "end": null
+  },
+  "outputs": [
+    "Intelligent Pipeline execution complete"
+  ]
+}

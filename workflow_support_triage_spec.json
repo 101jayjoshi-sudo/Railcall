@@ -1,0 +1,76 @@
+{
+  "id": "jayy/support-triage",
+  "name": "support_triage",
+  "title": "Zendesk Support Triage & Slack Notification",
+  "description": "Enterprise support operations workflow. Listens for incoming customer support requests, checks/provisions the user in Zendesk, opens support tickets for escalated issues, and routes real-time alerts to Slack. Fully governed under the RailCall Airlock. [contest:2026Q3]",
+  "trigger": "webhook",
+  "steps": [
+    {
+      "label": "Create Zendesk user",
+      "command_id": "jayy/zendesk-integration.create_user",
+      "inputs_template": {
+        "name": "{name}",
+        "email": "{email}",
+        "role": "end-user"
+      }
+    },
+    {
+      "label": "Create Zendesk ticket",
+      "command_id": "jayy/zendesk-integration.create_ticket",
+      "inputs_template": {
+        "subject": "Support Ticket: {name}",
+        "comment": "User {name} ({email}) requested support. Message: {message}",
+        "requester_email": "{email}",
+        "requester_name": "{name}"
+      }
+    },
+    {
+      "label": "Post Slack notification",
+      "command_id": "slack.send_message",
+      "inputs_template": {
+        "channel": "{slack_channel}",
+        "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "label": "Create Zendesk user",
+      "command_id": "jayy/zendesk-integration.create_user",
+      "inputs_template": {
+        "name": "{name}",
+        "email": "{email}",
+        "role": "end-user"
+      }
+    },
+    {
+      "label": "Create Zendesk ticket",
+      "command_id": "jayy/zendesk-integration.create_ticket",
+      "inputs_template": {
+        "subject": "Support Ticket: {name}",
+        "comment": "User {name} ({email}) requested support. Message: {message}",
+        "requester_email": "{email}",
+        "requester_name": "{name}"
+      }
+    },
+    {
+      "label": "Post Slack notification",
+      "command_id": "slack.send_message",
+      "inputs_template": {
+        "channel": "{slack_channel}",
+        "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+      }
+    }
+  ],
+  "stage_map": {
+    "new": "Create Zendesk user",
+    "escalated": "Create Zendesk ticket",
+    "notified": "Post Slack notification",
+    "resolved": null
+  },
+  "outputs": [
+    "user created in zendesk",
+    "ticket created in zendesk",
+    "slack notification posted"
+  ]
+}

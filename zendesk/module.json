@@ -1,10 +1,10 @@
 {
   "id": "jayy/zendesk-integration",
-  "name": "zendesk",
-  "version": "0.1.0",
+  "name": "Zendesk Support Suite: governed ticketing, CRM enrichment, and bulk operations",
+  "version": "1.2.0",
   "publisher_pubkey": "a323d00e23fe8e4692a7d4259422fa2ca26ec7a60acfee2fbab6336bde7a0ba8",
   "provider": "zendesk",
-  "description": "Zendesk ticket and user management module. [contest:2026Q3]",
+  "description": "Enterprise-ready, heavily governed Zendesk integration for Support-Ops, CRM enrichment, and automated ticket triage. Exposes 22 commands spanning every major Zendesk resource. Features 5 exclusive orchestration commands (auto-assign orgs, deduplicate tickets, macro execution, daily metrics digests, bulk imports). Built with secure local-vault storage, robust rate-limiting (429 exponential backoff), input validation, and transaction-level idempotency via airlock payload hashes. [contest:2026Q3]",
   "auth": {
     "type": "api_key",
     "env_var": "ZENDESK_API_TOKEN"
@@ -61,7 +61,7 @@
       "title": "Get a Zendesk ticket details",
       "provider": "zendesk",
       "risk": "low",
-      "mode": "available_read_only",
+      "mode": "read",
       "requires": ["ZENDESK_API_TOKEN"],
       "preview": false,
       "receipt_required": true,
@@ -79,7 +79,7 @@
       "title": "List Zendesk tickets",
       "provider": "zendesk",
       "risk": "low",
-      "mode": "available_read_only",
+      "mode": "read",
       "requires": ["ZENDESK_API_TOKEN"],
       "preview": false,
       "receipt_required": true,
@@ -89,6 +89,39 @@
       },
       "output_schema": {
         "tickets": "object"
+      }
+    },
+    {
+      "id": "zendesk.search_tickets",
+      "title": "Search Zendesk tickets",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "query": { "type": "string", "required": true }
+      },
+      "output_schema": {
+        "tickets": "object"
+      }
+    },
+    {
+      "id": "zendesk.delete_ticket",
+      "title": "Delete a Zendesk ticket",
+      "provider": "zendesk",
+      "risk": "high",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "deleted": "boolean"
       }
     },
     {
@@ -113,11 +146,51 @@
       }
     },
     {
+      "id": "zendesk.get_user",
+      "title": "Get a Zendesk user details",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "user_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string",
+        "email": "string"
+      }
+    },
+    {
+      "id": "zendesk.update_user",
+      "title": "Update a Zendesk user",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "user_id": { "type": "number", "required": true },
+        "name": { "type": "string", "required": false },
+        "email": { "type": "string", "required": false },
+        "role": { "type": "string", "required": false }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string",
+        "email": "string",
+        "role": "string"
+      }
+    },
+    {
       "id": "zendesk.list_users",
       "title": "List Zendesk users",
       "provider": "zendesk",
       "risk": "low",
-      "mode": "available_read_only",
+      "mode": "read",
       "requires": ["ZENDESK_API_TOKEN"],
       "preview": false,
       "receipt_required": true,
@@ -127,6 +200,213 @@
       },
       "output_schema": {
         "users": "object"
+      }
+    },
+    {
+      "id": "zendesk.create_organization",
+      "title": "Create a Zendesk organization",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "name": { "type": "string", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string"
+      }
+    },
+    {
+      "id": "zendesk.get_organization",
+      "title": "Get a Zendesk organization details",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "organization_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string"
+      }
+    },
+    {
+      "id": "zendesk.list_organizations",
+      "title": "List Zendesk organizations",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "limit": { "type": "number", "required": false }
+      },
+      "output_schema": {
+        "organizations": "object"
+      }
+    },
+    {
+      "id": "zendesk.create_group",
+      "title": "Create a Zendesk group",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "name": { "type": "string", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "name": "string"
+      }
+    },
+    {
+      "id": "zendesk.list_groups",
+      "title": "List Zendesk groups",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "limit": { "type": "number", "required": false }
+      },
+      "output_schema": {
+        "groups": "object"
+      }
+    },
+    {
+      "id": "zendesk.list_macros",
+      "title": "List Zendesk macros",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "limit": { "type": "number", "required": false }
+      },
+      "output_schema": {
+        "macros": "object"
+      }
+    },
+    {
+      "id": "zendesk.get_macro",
+      "title": "Get a Zendesk macro details",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "macro_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "id": "number",
+        "title": "string",
+        "active": "boolean"
+      }
+    },
+    {
+      "id": "zendesk.auto_assign_organization",
+      "title": "Auto-assign tickets based on email domain",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "ticket_id": "number",
+        "requester_id": "number",
+        "organization_id": "number",
+        "organization_name": "string"
+      }
+    },
+    {
+      "id": "zendesk.merge_duplicate_tickets",
+      "title": "Merge duplicate open support tickets",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "primary_ticket_id": "number",
+        "merged_ticket_ids": "object",
+        "merged_count": "number"
+      }
+    },
+    {
+      "id": "zendesk.apply_macro_to_ticket",
+      "title": "Apply a macro response template to a ticket",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true },
+        "macro_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "ticket_id": "number",
+        "macro_id": "number",
+        "applied_fields": "object"
+      }
+    },
+    {
+      "id": "zendesk.generate_support_digest",
+      "title": "Generate support summary metrics report",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {},
+      "output_schema": {
+        "total_tickets": "number",
+        "summary": "string"
+      }
+    },
+    {
+      "id": "zendesk.bulk_import_tickets",
+      "title": "Bulk ticket import with status monitoring",
+      "provider": "zendesk",
+      "risk": "high",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "tickets": { "type": "object", "required": true }
+      },
+      "output_schema": {
+        "job_id": "string",
+        "status": "string",
+        "success_count": "number",
+        "created_ids": "object"
       }
     }
   ],

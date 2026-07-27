@@ -1,8 +1,8 @@
-# RailCall Zendesk Module & Support Triage Workflow (2026Q3 Contest Submission)
+# RailCall Zendesk Module & Support Workflows (2026Q3 Contest Submission)
 
-This repository contains the complete source code, manifest, workflow spec, and test suites for my submission to the **2026Q3 RailCall Module and Workflow Contest**.
+This repository contains the complete source code, manifest, workflow specs, and test suites for my submission to the **2026Q3 RailCall Module and Workflow Contest**.
 
-Both submissions are fully published, signature-verified, and live on the marketplace.
+All submissions are fully published, signature-verified, and live on the marketplace.
 
 ---
 
@@ -12,8 +12,9 @@ Both submissions are fully published, signature-verified, and live on the market
   * `module.json`: The manifest file declaring slug, commands, and schemas.
   * `handlers/handler.py`: The module's Python backend code (executes REST requests).
   * `module.sig`: Ed25519 signature hex verifying the manifest and handler code.
-  * `README.md`: The developer/user guide for the module.
-* **`workflow_support_triage_receipt.json`**: The workflow spec file.
+  * `epic_description.md`: The developer/user guide for the module's marketplace page.
+* **`workflow_support_triage_spec.json`**: The basic support triage workflow spec.
+* **`workflow_intelligent_pipeline_spec.json`**: The advanced 7-step orchestration workflow spec.
 * **`test_zendesk_module.py`**: Local unit test suite running against a loopback mock server.
 * **`run_workflow_engine.py`**: Flow engine test harness to simulate lead CSV routing.
 
@@ -29,20 +30,40 @@ Both submissions are fully published, signature-verified, and live on the market
   railcall market install jayy/zendesk-integration
   ```
 
-### Exposes 6 Core Commands:
-1. `zendesk.create_ticket`: Create a new support ticket (subject, comment, priority, requester details).
-2. `zendesk.update_ticket`: Update ticket status, priority, or add a comment/internal note.
-3. `zendesk.get_ticket`: Fetch ticket status and details by ID.
-4. `zendesk.list_tickets`: List tickets with optional status filter.
-5. `zendesk.create_user`: Create user profiles (end-user, agent, or admin).
-6. `zendesk.list_users`: List users filtered by role.
+### Exposes 22 Core Commands:
+1. **Tickets (6)**: create, update, get, list, search, delete
+2. **User Lifecycle (4)**: create, update, get, list
+3. **Organizations (3)**: create, get, list
+4. **Groups (2)**: create, list
+5. **Macros (2)**: get, list
+6. **Advanced Orchestration (5)**: auto-assign org, merge duplicates, apply macro, generate digest, bulk import
 
 ---
 
-## 🎬 Entry 2: Track B — Best Workflow
+## 🎬 Entry 2: Track B — Intelligent Support Pipeline (Advanced)
+
+* **Marketplace Slug**: `jayy/intelligent-support-pipeline`
+* **Pricing**: Free ($0)
+* **Install Command**:
+  ```bash
+  railcall market install jayy/intelligent-support-pipeline
+  ```
+
+### Scenario:
+An advanced, 7-step Support-Ops pipeline that demonstrates the full orchestration power of the Zendesk module. It:
+1. Provisions the incoming user.
+2. Creates a governed support ticket.
+3. Auto-detects and links their corporate organization based on email domain.
+4. Deduplicates any existing open tickets for that user.
+5. Applies a welcome macro.
+6. Compiles a daily support metrics digest.
+7. Alerts the Ops team via Slack.
+
+---
+
+## 🎬 Entry 3: Track B — Support Triage (Basic)
 
 * **Marketplace Slug**: `jayy/support-triage`
-* **Direct Listing URL**: [https://railcall.ai/marketplace/jayy/support-triage](https://railcall.ai/marketplace/jayy/support-triage)
 * **Pricing**: Free ($0)
 * **Install Command**:
   ```bash
@@ -50,12 +71,7 @@ Both submissions are fully published, signature-verified, and live on the market
   ```
 
 ### Scenario:
-1. **Trigger**: Processes support leads CSV containing fields `name`, `email`, `status`, `message`.
-2. **Routing Flow**:
-   * Rows with status `"new"` route to `zendesk.create_user` to provision accounts.
-   * Rows with status `"escalated"` route to `zendesk.create_ticket` to open tickets.
-   * Rows with status `"notified"` route to `slack.message_post` to alert developers.
-   * Rows with status `"resolved"` are routed to the terminal stage.
+A basic webhook routing flow that processes support leads, creating Zendesk users, tickets, or Slack alerts based on state machine rules.
 
 ---
 
@@ -64,7 +80,7 @@ Both submissions are fully published, signature-verified, and live on the market
 Both entries are fully verified offline. You can execute these test scripts directly from the repository.
 
 ### 1. Run Zendesk Module Operations Test:
-Starts a local mock server and executes all 6 operations, validating payload formatting and returns:
+Starts a local mock server and executes all 22 operations, validating payload formatting and returns:
 ```bash
 python3 test_zendesk_module.py
 ```
