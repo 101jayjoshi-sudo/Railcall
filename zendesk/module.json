@@ -1,13 +1,17 @@
 {
   "id": "jayy/zendesk-integration",
   "name": "Zendesk Support Suite: governed ticketing, CRM enrichment, and bulk operations",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "publisher_pubkey": "a323d00e23fe8e4692a7d4259422fa2ca26ec7a60acfee2fbab6336bde7a0ba8",
   "provider": "zendesk",
   "description": "Enterprise-ready, heavily governed Zendesk integration for Support-Ops, CRM enrichment, and automated ticket triage. Exposes 22 commands spanning every major Zendesk resource. Features 5 exclusive orchestration commands (auto-assign orgs, deduplicate tickets, macro execution, daily metrics digests, bulk imports). Built with secure local-vault storage, robust rate-limiting (429 exponential backoff), input validation, and transaction-level idempotency via airlock payload hashes. [contest:2026Q3]",
+  "homepage": "https://github.com/jayy/railcall-zendesk",
+  "tests_url": "https://github.com/jayy/railcall-zendesk/blob/main/test_zendesk_module.py",
   "auth": {
     "type": "api_key",
-    "env_var": "ZENDESK_API_TOKEN"
+    "vault_provider": "zendesk",
+    "secret_field": "ZENDESK_API_TOKEN",
+    "docs": "https://your-subdomain.zendesk.com/agent/admin/api/settings"
   },
   "commands": [
     {
@@ -408,7 +412,100 @@
         "success_count": "number",
         "created_ids": "object"
       }
+    },
+    {
+      "id": "zendesk.list_ticket_comments",
+      "title": "List comments on a ticket",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "ticket_id": "number",
+        "comments": "object",
+        "count": "number"
+      }
+    },
+    {
+      "id": "zendesk.add_ticket_comment",
+      "title": "Add a comment to a ticket",
+      "provider": "zendesk",
+      "risk": "medium",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true },
+        "body": { "type": "string", "required": true },
+        "public": { "type": "boolean", "required": false }
+      },
+      "output_schema": {
+        "ticket_id": "number",
+        "status": "string",
+        "comment_public": "boolean"
+      }
+    },
+    {
+      "id": "zendesk.search_users",
+      "title": "Search Zendesk users by query",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "query": { "type": "string", "required": true }
+      },
+      "output_schema": {
+        "users": "object",
+        "count": "number"
+      }
+    },
+    {
+      "id": "zendesk.get_ticket_satisfaction",
+      "title": "Get CSAT satisfaction rating for a ticket",
+      "provider": "zendesk",
+      "risk": "low",
+      "mode": "read",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": false,
+      "receipt_required": true,
+      "input_schema": {
+        "ticket_id": { "type": "number", "required": true }
+      },
+      "output_schema": {
+        "ticket_id": "number",
+        "rating": "string",
+        "comment": "string",
+        "created_at": "string"
+      }
+    },
+    {
+      "id": "zendesk.suspend_user",
+      "title": "Suspend a Zendesk user account",
+      "provider": "zendesk",
+      "risk": "high",
+      "mode": "write_requires_approval",
+      "requires": ["ZENDESK_API_TOKEN"],
+      "preview": true,
+      "receipt_required": true,
+      "input_schema": {
+        "user_id": { "type": "number", "required": true },
+        "reason": { "type": "string", "required": false }
+      },
+      "output_schema": {
+        "user_id": "number",
+        "name": "string",
+        "suspended": "boolean"
+      }
     }
   ],
-  "license_required": true
+  "license_required": false
 }

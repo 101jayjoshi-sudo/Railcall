@@ -104,10 +104,36 @@ def _credentials():
 
 
 def _safe_api_message(raw, status):
-    if status in (401, 403):
-        return "Zendesk rejected the saved credential or its permissions."
+    """Translate Zendesk HTTP errors into operator-actionable guidance.
+
+    Errors never surface raw credentials, tokens, or URLs.
+    Each status code tells the operator exactly what to do next.
+    """
+    if status == 401:
+        return (
+            "Zendesk rejected the API token. Open RailCall Studio > Vault > zendesk "
+            "and paste a fresh API token. Tokens are under Zendesk Admin > Apps > API."
+        )
+    if status == 403:
+        return (
+            "Zendesk denied permission. The API token is valid but lacks access to this "
+            "resource. Check the token owner's role in Zendesk Admin > Team members."
+        )
     if status == 404:
-        return "Zendesk resource was not found or is not visible to this user."
+        return (
+            "Zendesk resource not found. Verify the ID exists in your Zendesk account "
+            "and that the token owner can see it (admin vs. agent scope matters)."
+        )
+    if status == 422:
+        return (
+            "Zendesk rejected the request body. A field value is invalid or a required "
+            "field is missing. Check ticket status/priority values are Zendesk-standard."
+        )
+    if status == 409:
+        return (
+            "Conflict: a resource with this external_id already exists in Zendesk. "
+            "The idempotency key prevented a duplicate write — this is safe to ignore."
+        )
     message = ""
     try:
         payload = json.loads(raw.decode("utf-8", "replace"))
@@ -121,11 +147,12 @@ def _safe_api_message(raw, status):
         pass
     if not message:
         message = f"Zendesk returned HTTP {status}"
-    
+
     # Redact sensitive keys and URLs to prevent credential leaks in logs
     message = re.sub(r"(?i)(api[_-]?token|token|password|auth|key)\s*[:=]\s*\S+", r"\1=[REDACTED]", message)
     message = re.sub(r"https?://\S+", "[URL REDACTED]", message)
-    return message[:240]
+    return message[:300]
+
 
 
 def _sleep_seconds(headers, attempt):
@@ -853,11 +880,168 @@ def zendesk_bulk_import_tickets(inputs, stamp):
         
     results = final_status.get("results") or []
     created_ids = [r.get("id") for r in results if r.get("id")]
-    
+
     return {
         "ok": True,
         "job_id": job_id,
         "status": final_status.get("status"),
         "success_count": len(created_ids),
         "created_ids": created_ids
+    }, None
+
+
+# ── TICKET COMMENTS COMMANDS ─────────────────────────────────────────────
+
+def zendesk_list_ticket_comments(inputs, stamp):
+    """List all comments (public and internal) on a ticket.
+
+    Returns comment author IDs, timestamps, and body text.
+    Useful for building audit trails, summarising ticket history,
+    or identifying which agent last replied.
+    """
+    ticket_id = _positive_id(inputs.get("ticket_id"), "ticket_id")
+    payload, _, _ = _request("GET", f"/api/v2/tickets/{ticket_id}/comments.json")
+    comments = payload.get("comments") or []
+    return {
+        "ok": True,
+        "ticket_id": ticket_id,
+        "comments": [
+            {
+                "id": c.get("id"),
+                "body": (c.get("body") or "")[:500],
+                "public": c.get("public"),
+                "author_id": c.get("author_id"),
+                "created_at": c.get("created_at"),
+            }
+            for c in comments
+        ],
+        "count": len(comments),
+    }, None
+
+
+def zendesk_add_ticket_comment(inputs, stamp):
+    """Append a public or internal comment to an existing ticket.
+
+    Public comments are visible to the requester.
+    Internal notes (public=false) are agent-only.
+    Idempotent via airlock payload hash — a retry after network failure
+    will not post a duplicate comment.
+    """
+    payload_hash = _H["airlock_payload_hash"]("jayy/zendesk-integration.add_ticket_comment", inputs)
+    ticket_id = _positive_id(inputs.get("ticket_id"), "ticket_id")
+    body = _clean_text(inputs.get("body"), "body", 10000)
+    public = inputs.get("public")
+    if public is None:
+        public = True
+    if not isinstance(public, bool):
+        raise ZendeskError("public must be a boolean (true = visible to requester)")
+
+    ticket_payload = {
+        "comment": {
+            "body": body,
+            "public": public,
+        }
+    }
+    result, _, _ = _request(
+        "PUT", f"/api/v2/tickets/{ticket_id}.json",
+        body={"ticket": ticket_payload},
+        payload_hash=payload_hash,
+    )
+    ticket = result.get("ticket") or {}
+    return {
+        "ok": True,
+        "ticket_id": ticket.get("id"),
+        "status": ticket.get("status"),
+        "comment_public": public,
+    }, None
+
+
+# ── USER SEARCH COMMAND ──────────────────────────────────────────────────
+
+def zendesk_search_users(inputs, stamp):
+    """Search Zendesk users by name, email, or external ID.
+
+    Useful for checking if a user already exists before provisioning,
+    or for finding a user's ID from their email to pass to other commands.
+    Example: search_users {"query": "ada@example.com"} returns the user
+    with that email if they exist.
+    """
+    query = _clean_text(inputs.get("query"), "query", 300)
+    payload, _, _ = _request(
+        "GET", "/api/v2/users/search.json",
+        params={"query": query},
+    )
+    users = payload.get("users") or []
+    return {
+        "ok": True,
+        "users": [
+            {
+                "id": u.get("id"),
+                "name": u.get("name"),
+                "email": u.get("email"),
+                "role": u.get("role"),
+                "active": u.get("active"),
+            }
+            for u in users
+        ],
+        "count": len(users),
+    }, None
+
+
+# ── SATISFACTION RATINGS COMMAND ─────────────────────────────────────────
+
+def zendesk_get_ticket_satisfaction(inputs, stamp):
+    """Fetch the CSAT satisfaction rating for a solved ticket.
+
+    Returns the rating (good/bad), the comment left by the requester,
+    and the score timestamp. Returns null rating if not yet rated.
+    Requires Zendesk Satisfaction Ratings to be enabled on the account.
+    """
+    ticket_id = _positive_id(inputs.get("ticket_id"), "ticket_id")
+    payload, status, _ = _request("GET", f"/api/v2/tickets/{ticket_id}/satisfaction_rating.json")
+    if status == 404:
+        return {
+            "ok": True,
+            "ticket_id": ticket_id,
+            "rating": None,
+            "note": "No satisfaction rating found for this ticket.",
+        }, None
+    rating = payload.get("satisfaction_rating") or {}
+    return {
+        "ok": True,
+        "ticket_id": ticket_id,
+        "rating": rating.get("score"),
+        "comment": rating.get("comment"),
+        "created_at": rating.get("created_at"),
+    }, None
+
+
+# ── USER SUSPEND COMMAND ─────────────────────────────────────────────────
+
+def zendesk_suspend_user(inputs, stamp):
+    """Suspend a Zendesk user account, blocking them from submitting tickets.
+
+    High-risk action: suspended users cannot create new tickets or sign in.
+    Always stop-at-airlock. Provide a reason for the audit trail.
+    To re-activate, call zendesk.update_user with suspended=false.
+    """
+    payload_hash = _H["airlock_payload_hash"]("jayy/zendesk-integration.suspend_user", inputs)
+    user_id = _positive_id(inputs.get("user_id"), "user_id")
+    reason = _optional_text(inputs.get("reason"), "reason", 300)
+
+    user_payload: dict = {"suspended": True}
+    if reason:
+        user_payload["notes"] = f"[Suspended by RailCall] {reason}"
+
+    result, _, _ = _request(
+        "PUT", f"/api/v2/users/{user_id}.json",
+        body={"user": user_payload},
+        payload_hash=payload_hash,
+    )
+    user = result.get("user") or {}
+    return {
+        "ok": True,
+        "user_id": user.get("id"),
+        "name": user.get("name"),
+        "suspended": user.get("suspended"),
     }, None

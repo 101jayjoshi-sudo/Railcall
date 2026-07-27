@@ -2,129 +2,149 @@
   "id": "jayy/intelligent-support-pipeline",
   "name": "intelligent_support_pipeline",
   "title": "Zendesk Intelligent Support Pipeline",
-  "description": "An advanced, 7-step Support-Ops pipeline that demonstrates the full orchestration power of the Zendesk integration. It provisions the user, creates a governed ticket, auto-detects and links their corporate organization based on email domain, deduplicates any existing open tickets, applies a welcome macro, compiles a daily support metrics digest, and alerts the Ops team via Slack. [contest:2026Q3]",
+  "description": "A 7-step governed Support-Ops pipeline built entirely on the jayy/zendesk-integration module's orchestration commands. Triggered by a webhook, the workflow: (1) provisions the requester as a Zendesk user, (2) opens a governed support ticket via the airlock, (3) auto-detects the requester's company from their email domain and links the ticket to the matching organization (creating it if missing), (4) deduplicates any open tickets from the same requester and merges them, (5) applies a welcome macro — but ONLY if no duplicates were found (preventing double-responses on merged tickets), (6) compiles a daily support digest report with ticket counts by status and priority, and (7) posts the full digest to Slack via a direct webhook POST.\n\nTrigger contract: POST a JSON body with fields: name (string), email (valid email), subject (string), message (string), macro_id (integer — your welcome macro ID from zendesk.list_macros), slack_channel_webhook (string — your Slack Incoming Webhook URL from api.slack.com/apps).\n\nDependencies: Requires jayy/zendesk-integration v1.3.0 or later. No Slack module required — Slack notification is a direct HTTP POST to your Incoming Webhook URL.\n\nWhy apply the macro AFTER deduplication: If the requester already has open tickets (i.e. duplicates were merged), firing the welcome macro again would send a second welcome reply on a ticket that is already being handled. The conditional guard (merged_count == 0) ensures the macro only fires for genuinely new requesters. [contest:2026Q3]",
   "trigger": "webhook",
   "steps": [
     {
+      "id": "provision_user",
       "label": "Provision User",
       "command_id": "jayy/zendesk-integration.create_user",
       "inputs_template": {
-        "name": "{name}",
-        "email": "{email}"
+        "name": "{{ctx.name}}",
+        "email": "{{ctx.email}}"
       }
     },
     {
+      "id": "open_ticket",
       "label": "Open Ticket",
       "command_id": "jayy/zendesk-integration.create_ticket",
       "inputs_template": {
-        "subject": "Inbound Request: {subject}",
-        "comment": "{message}",
-        "requester_email": "{email}",
-        "requester_name": "{name}"
+        "subject": "Inbound Request: {{ctx.subject}}",
+        "comment": "{{ctx.message}}",
+        "requester_email": "{{ctx.email}}",
+        "requester_name": "{{ctx.name}}"
       }
     },
     {
+      "id": "assign_org",
       "label": "Auto-Assign Organization",
       "command_id": "jayy/zendesk-integration.auto_assign_organization",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}"
+        "ticket_id": "{{nodes.open_ticket.id}}"
       }
     },
     {
+      "id": "merge_duplicates",
       "label": "Merge Duplicates",
       "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}"
+        "ticket_id": "{{nodes.open_ticket.id}}"
       }
     },
     {
+      "id": "apply_macro",
       "label": "Apply Welcome Macro",
       "command_id": "jayy/zendesk-integration.apply_macro_to_ticket",
+      "cond": "{{nodes.merge_duplicates.merged_count}} == 0",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}",
-        "macro_id": "{macro_id}"
+        "ticket_id": "{{nodes.open_ticket.id}}",
+        "macro_id": "{{ctx.macro_id}}"
       }
     },
     {
+      "id": "generate_digest",
       "label": "Generate Digest",
       "command_id": "jayy/zendesk-integration.generate_support_digest",
       "inputs_template": {}
     },
     {
+      "id": "notify_slack",
       "label": "Notify Slack",
-      "command_id": "slack.send_message",
-      "inputs_template": {
-        "channel": "{slack_channel}",
-        "text": "🚨 *Intelligent Triage Complete*\nTicket #{Open Ticket.id} opened for {name} ({email}).\nOrganization linked: {Auto-Assign Organization.organization_name}\nDuplicates merged: {Merge Duplicates.merged_count}\n\n*Support Digest (Last 24h)*\n{Generate Digest.summary}"
+      "type": "http",
+      "method": "POST",
+      "url": "{{ctx.slack_channel_webhook}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body_template": {
+        "text": "Intelligent Triage Complete. Ticket #{{nodes.open_ticket.id}} opened for {{ctx.name}} ({{ctx.email}}). Organization linked: {{nodes.assign_org.organization_name}}. Duplicates merged: {{nodes.merge_duplicates.merged_count}}.\n\nSupport Digest (Last 24h):\n{{nodes.generate_digest.summary}}"
       }
     }
   ],
   "nodes": [
     {
+      "id": "provision_user",
       "label": "Provision User",
       "command_id": "jayy/zendesk-integration.create_user",
       "inputs_template": {
-        "name": "{name}",
-        "email": "{email}"
+        "name": "{{ctx.name}}",
+        "email": "{{ctx.email}}"
       }
     },
     {
+      "id": "open_ticket",
       "label": "Open Ticket",
       "command_id": "jayy/zendesk-integration.create_ticket",
       "inputs_template": {
-        "subject": "Inbound Request: {subject}",
-        "comment": "{message}",
-        "requester_email": "{email}",
-        "requester_name": "{name}"
+        "subject": "Inbound Request: {{ctx.subject}}",
+        "comment": "{{ctx.message}}",
+        "requester_email": "{{ctx.email}}",
+        "requester_name": "{{ctx.name}}"
       }
     },
     {
+      "id": "assign_org",
       "label": "Auto-Assign Organization",
       "command_id": "jayy/zendesk-integration.auto_assign_organization",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}"
+        "ticket_id": "{{nodes.open_ticket.id}}"
       }
     },
     {
+      "id": "merge_duplicates",
       "label": "Merge Duplicates",
       "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}"
+        "ticket_id": "{{nodes.open_ticket.id}}"
       }
     },
     {
+      "id": "apply_macro",
       "label": "Apply Welcome Macro",
       "command_id": "jayy/zendesk-integration.apply_macro_to_ticket",
+      "cond": "{{nodes.merge_duplicates.merged_count}} == 0",
       "inputs_template": {
-        "ticket_id": "{Open Ticket.id}",
-        "macro_id": "{macro_id}"
+        "ticket_id": "{{nodes.open_ticket.id}}",
+        "macro_id": "{{ctx.macro_id}}"
       }
     },
     {
+      "id": "generate_digest",
       "label": "Generate Digest",
       "command_id": "jayy/zendesk-integration.generate_support_digest",
       "inputs_template": {}
     },
     {
+      "id": "notify_slack",
       "label": "Notify Slack",
-      "command_id": "slack.send_message",
-      "inputs_template": {
-        "channel": "{slack_channel}",
-        "text": "🚨 *Intelligent Triage Complete*\nTicket #{Open Ticket.id} opened for {name} ({email}).\nOrganization linked: {Auto-Assign Organization.organization_name}\nDuplicates merged: {Merge Duplicates.merged_count}\n\n*Support Digest (Last 24h)*\n{Generate Digest.summary}"
+      "type": "http",
+      "method": "POST",
+      "url": "{{ctx.slack_channel_webhook}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body_template": {
+        "text": "Intelligent Triage Complete. Ticket #{{nodes.open_ticket.id}} opened for {{ctx.name}} ({{ctx.email}}). Organization linked: {{nodes.assign_org.organization_name}}. Duplicates merged: {{nodes.merge_duplicates.merged_count}}.\n\nSupport Digest (Last 24h):\n{{nodes.generate_digest.summary}}"
       }
     }
   ],
-  "stage_map": {
-    "step1": "Provision User",
-    "step2": "Open Ticket",
-    "step3": "Auto-Assign Organization",
-    "step4": "Merge Duplicates",
-    "step5": "Apply Welcome Macro",
-    "step6": "Generate Digest",
-    "step7": "Notify Slack",
-    "end": null
-  },
   "outputs": [
-    "Intelligent Pipeline execution complete"
+    "user provisioned",
+    "ticket opened",
+    "organization auto-assigned",
+    "duplicates merged",
+    "macro applied (if no duplicates)",
+    "digest generated",
+    "slack notified"
   ]
 }

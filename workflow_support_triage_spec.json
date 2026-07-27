@@ -2,75 +2,90 @@
   "id": "jayy/support-triage",
   "name": "support_triage",
   "title": "Zendesk Support Triage & Slack Notification",
-  "description": "Enterprise support operations workflow. Listens for incoming customer support requests, checks/provisions the user in Zendesk, opens support tickets for escalated issues, and routes real-time alerts to Slack. Fully governed under the RailCall Airlock. [contest:2026Q3]",
+  "description": "Automated support operations workflow for teams using Zendesk and Slack. Triggered by a webhook, this workflow handles the full lifecycle of an incoming support request in 4 steps: it provisions the requester as a Zendesk user, deduplicates any open tickets they already have (preventing duplicate agent work), opens a governed support ticket via the airlock, and posts a real-time alert to your Slack workspace via a direct webhook POST — no Slack module dependency required.\n\nTrigger contract: POST a JSON body with fields: name (string), email (string, valid email), message (string), slack_channel_webhook (string, your Slack incoming webhook URL).\n\nDependencies: Requires jayy/zendesk-integration v1.3.0 or later to be installed. The Slack step uses a direct HTTP POST to your Slack Incoming Webhook URL — no separate Slack module required.\n\nSetup: (1) Install jayy/zendesk-integration and configure the zendesk vault entry with subdomain, email, and api_token. (2) Create a Slack Incoming Webhook at api.slack.com/apps and copy the webhook URL. (3) Pass the webhook URL as slack_channel_webhook in your trigger payload. (contest:2026Q3)",
   "trigger": "webhook",
   "steps": [
     {
-      "label": "Create Zendesk user",
+      "label": "Provision User",
       "command_id": "jayy/zendesk-integration.create_user",
       "inputs_template": {
         "name": "{name}",
-        "email": "{email}",
-        "role": "end-user"
+        "email": "{email}"
       }
     },
     {
-      "label": "Create Zendesk ticket",
+      "label": "Deduplicate Tickets",
+      "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
+      "inputs_template": {
+        "ticket_id": "{Provision User.id}"
+      }
+    },
+    {
+      "label": "Create Support Ticket",
       "command_id": "jayy/zendesk-integration.create_ticket",
       "inputs_template": {
-        "subject": "Support Ticket: {name}",
-        "comment": "User {name} ({email}) requested support. Message: {message}",
+        "subject": "Support Request: {name}",
+        "comment": "{message}",
         "requester_email": "{email}",
         "requester_name": "{name}"
       }
     },
     {
-      "label": "Post Slack notification",
-      "command_id": "slack.send_message",
-      "inputs_template": {
-        "channel": "{slack_channel}",
-        "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+      "label": "Notify Slack",
+      "type": "http",
+      "method": "POST",
+      "url": "{slack_channel_webhook}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body_template": {
+        "text": "New support ticket #{Create Support Ticket.id} opened for *{name}* ({email}). Subject: {Create Support Ticket.subject}"
       }
     }
   ],
   "nodes": [
     {
-      "label": "Create Zendesk user",
+      "label": "Provision User",
       "command_id": "jayy/zendesk-integration.create_user",
       "inputs_template": {
         "name": "{name}",
-        "email": "{email}",
-        "role": "end-user"
+        "email": "{email}"
       }
     },
     {
-      "label": "Create Zendesk ticket",
+      "label": "Deduplicate Tickets",
+      "command_id": "jayy/zendesk-integration.merge_duplicate_tickets",
+      "inputs_template": {
+        "ticket_id": "{Provision User.id}"
+      }
+    },
+    {
+      "label": "Create Support Ticket",
       "command_id": "jayy/zendesk-integration.create_ticket",
       "inputs_template": {
-        "subject": "Support Ticket: {name}",
-        "comment": "User {name} ({email}) requested support. Message: {message}",
+        "subject": "Support Request: {name}",
+        "comment": "{message}",
         "requester_email": "{email}",
         "requester_name": "{name}"
       }
     },
     {
-      "label": "Post Slack notification",
-      "command_id": "slack.send_message",
-      "inputs_template": {
-        "channel": "{slack_channel}",
-        "text": "🎫 *New Support Ticket* created for *{name}* ({email})"
+      "label": "Notify Slack",
+      "type": "http",
+      "method": "POST",
+      "url": "{slack_channel_webhook}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body_template": {
+        "text": "New support ticket #{Create Support Ticket.id} opened for *{name}* ({email}). Subject: {Create Support Ticket.subject}"
       }
     }
   ],
-  "stage_map": {
-    "new": "Create Zendesk user",
-    "escalated": "Create Zendesk ticket",
-    "notified": "Post Slack notification",
-    "resolved": null
-  },
   "outputs": [
-    "user created in zendesk",
-    "ticket created in zendesk",
+    "user provisioned in zendesk",
+    "duplicate tickets merged",
+    "support ticket created",
     "slack notification posted"
   ]
 }
