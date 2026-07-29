@@ -1,10 +1,10 @@
 {
   "id": "jayy/zendesk-integration",
   "name": "Zendesk Support Suite: governed ticketing, CRM enrichment, and bulk operations",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "publisher_pubkey": "a323d00e23fe8e4692a7d4259422fa2ca26ec7a60acfee2fbab6336bde7a0ba8",
   "provider": "zendesk",
-  "description": "Enterprise-ready, heavily governed Zendesk integration for Support-Ops, CRM enrichment, and automated ticket triage. Exposes 22 commands spanning every major Zendesk resource. Features 5 exclusive orchestration commands (auto-assign orgs, deduplicate tickets, macro execution, daily metrics digests, bulk imports). Built with secure local-vault storage, robust rate-limiting (429 exponential backoff), input validation, and transaction-level idempotency via airlock payload hashes. [contest:2026Q3]",
+  "description": "5 exclusive orchestration composites — auto_assign_organization (domain-to-org matching), merge_duplicate_tickets (dedup engine), apply_macro_to_ticket (conditional template application), generate_support_digest (daily metrics rollup), bulk_import_tickets (batch ingest with status monitoring). Each composite wraps 2-5 Zendesk API calls behind a single airlock approval, turning multi-step operations into one governed action. Plus 22 individual commands spanning tickets, users, organizations, groups, and macros — 27 total. Enterprise-ready, heavily governed Zendesk integration for Support-Ops, CRM enrichment, and automated ticket triage. Built with secure local-vault storage (0600 permissions, never transmitted), robust rate-limiting (429 exponential backoff with Retry-After respect), per-field input validation, and transaction-level idempotency via airlock payload hashes. [contest:2026Q3]",
   "homepage": "https://github.com/101jayjoshi-sudo/Railcall",
   "tests_url": "https://github.com/101jayjoshi-sudo/Railcall/blob/main/test_zendesk_module.py",
   "video_url": "https://youtu.be/9gJm7Xilh_Y",
